@@ -11,12 +11,18 @@
 
 State shape: `docs[]`, `query`, `config { topK, chunkSize, overlap }`, `result { answer, retrievedDocs[] } | { error }`
 
-Retrieval: keyword overlap scoring — split query on `\W+`, count hits per doc, sort descending, take `topK`.
+Retrieval (`src/lib/retrieval.js`): documents are split into overlapping chunks (`chunkSize`/`overlap`),
+each chunk and the query are embedded as term-frequency bag-of-words vectors, and ranking is by cosine
+similarity; top `topK` chunks are returned. This is a real (local, dependency-free) vector-similarity
+approximation — not keyword matching.
 
 Claude system prompt pattern:
+
 > "Answer using ONLY the provided context. Cite documents used. Format with **Answer**, **Sources Used**, **Confidence Level**."
 
-Extend by: swapping keyword scoring for real vector similarity (Pinecone, pgvector, Weaviate). Add embedding model selector (voyage-3, text-embedding-3-small).
+Extend by: swapping the local TF-cosine scorer for real embeddings + a vector DB (Pinecone, pgvector,
+Weaviate). The embedding-model and vector-store dropdowns are bound to state and shown in the caption,
+ready to drive a real backend.
 
 ---
 
@@ -45,6 +51,7 @@ Extend by: real pre/post processing middleware, A/B comparison mode, AWS Bedrock
 ### ArchitecturePatterns
 
 Three SVG diagrams (no Claude API calls — static):
+
 - `rag` — API Gateway → RAG Service → Embeddings → Vector DB → Claude API + Cache + Monitoring
 - `agent` — Orchestrator → Planner / Executor / Critic → Tools / Memory → Claude API
 - `secure` — Client → WAF → Auth/IAM + PII Filter → Claude API + Audit Log + DLP/SIEM
@@ -85,11 +92,24 @@ Extend by: Anthropic Usage API, Datadog/CloudWatch, LangSmith/Langfuse trace IDs
 ## Animation Classes
 
 ```css
-.fade-in    { animation: fadeIn 0.4s ease }
-.agent-step { animation: slideIn 0.3s ease forwards; opacity: 0 }
-.spin       { animation: spin 1s linear infinite }
-.pulse      { animation: pulse 2s infinite }
-.grid-bg    { background: dot-grid at rgba(14,165,233,0.03), 40px 40px }
+.fade-in {
+  animation: fadeIn 0.4s ease;
+}
+.agent-step {
+  animation: slideIn 0.3s ease forwards;
+  opacity: 0;
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+.pulse {
+  animation: pulse 2s infinite;
+}
+.grid-bg {
+  background:
+    dot-grid at rgba(14, 165, 233, 0.03),
+    40px 40px;
+}
 ```
 
 ---
@@ -110,6 +130,7 @@ NEXT_PUBLIC_APP_URL=https://claude-architect.yourdomain.com
 ## Full Roadmap
 
 **Phase 1 — Done**
+
 - [x] RAG pipeline with live Claude API
 - [x] Agent orchestration with animated trace
 - [x] Prompt analysis + guardrails UI
@@ -117,12 +138,14 @@ NEXT_PUBLIC_APP_URL=https://claude-architect.yourdomain.com
 - [x] Monitoring charts with mock data
 
 **Phase 2 — Real Backend**
+
 - [ ] Pinecone/pgvector retrieval
 - [ ] Real tool execution in agent loop
 - [ ] SSE streaming responses
 - [ ] Anthropic Usage API for monitoring
 
 **Phase 3 — Enterprise**
+
 - [ ] Multi-tenant auth (Auth0/Cognito)
 - [ ] Per-user API key management
 - [ ] Audit logging (PostgreSQL/CloudWatch)
@@ -130,6 +153,7 @@ NEXT_PUBLIC_APP_URL=https://claude-architect.yourdomain.com
 - [ ] LangSmith/Langfuse trace integration
 
 **Phase 4 — MLOps**
+
 - [ ] Prompt version control (git-style diff)
 - [ ] A/B prompt evaluation harness
 - [ ] Automated regression on prompt changes
@@ -139,13 +163,13 @@ NEXT_PUBLIC_APP_URL=https://claude-architect.yourdomain.com
 
 ## Job Description Mapping
 
-| JD Requirement | Demonstrated In |
-|---|---|
-| Claude / LLM API integration | `callClaude()` helper, all tabs |
-| RAG + vector DB design | RAGPipeline tab |
-| AI agent frameworks | AgentOrchestration — ReAct loop |
-| Prompt engineering + guardrails | PromptStudio tab |
-| Architecture diagrams | ArchitecturePatterns — 3 SVG patterns |
-| Cost + performance monitoring | Monitoring tab |
-| Security + governance | Secure Enterprise diagram, PII/toxicity guardrails |
-| Cloud (AWS/Azure/GCP) | Architecture node labels, Phase 3 roadmap |
+| JD Requirement                  | Demonstrated In                                    |
+| ------------------------------- | -------------------------------------------------- |
+| Claude / LLM API integration    | `callClaude()` helper, all tabs                    |
+| RAG + vector DB design          | RAGPipeline tab                                    |
+| AI agent frameworks             | AgentOrchestration — ReAct loop                    |
+| Prompt engineering + guardrails | PromptStudio tab                                   |
+| Architecture diagrams           | ArchitecturePatterns — 3 SVG patterns              |
+| Cost + performance monitoring   | Monitoring tab                                     |
+| Security + governance           | Secure Enterprise diagram, PII/toxicity guardrails |
+| Cloud (AWS/Azure/GCP)           | Architecture node labels, Phase 3 roadmap          |

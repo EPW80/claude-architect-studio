@@ -2,19 +2,26 @@
 
 ## Project
 
-Single-file React app (`ClaudeArchitectStudio.jsx`) demonstrating enterprise GenAI architecture patterns for a Claude Architect portfolio application. Runs via Vite dev server locally and deploys to Vercel with an Edge Function proxy (`api/messages.js`) for the Anthropic API.
+Modular React app under `src/` demonstrating enterprise GenAI architecture patterns for a Claude Architect portfolio application. Runs via Vite dev server locally and deploys to Vercel with an Edge Function proxy (`api/messages.js`) for the Anthropic API.
 
 ## Stack
 
-- React (hooks, no build), Recharts, Anthropic `/v1/messages` API
+- React (hooks, Vite), Recharts, Anthropic `/v1/messages` API
 - Fonts: Space Grotesk (UI), JetBrains Mono (data/code)
-- Model: `claude-sonnet-4-6`, `max_tokens: 1000`
+- Models: `claude-sonnet-4-6` (primary), `claude-haiku-4-5` (prompt scoring); see `src/lib/claude.js` `MODELS`
 
 ## File Structure
 
 ```
-ClaudeArchitectStudio.jsx   Single source of truth — all 5 tabs live here
-src/main.jsx                React entry point
+src/main.jsx                React entry point (imports App + styles.css)
+src/App.jsx                 Shell: header, tab state, tab switch
+src/styles.css              Global CSS — theme, animations, responsive grids
+src/theme.js                Color palette constants
+src/lib/claude.js           callClaude / streamClaude / parseJSON + MODELS
+src/lib/retrieval.js        Local chunking + TF-cosine similarity (RAG)
+src/lib/guardrails.js       PII redaction + guardrail enforcement
+src/components/Icon.jsx     Icon component + icons map
+src/components/tabs/*.jsx   One file per tab (RAGPipeline, AgentOrchestration, …)
 api/messages.js             Vercel Edge Function proxy for Anthropic API
 vite.config.js              Dev server config with API proxy
 index.html                  HTML shell
@@ -40,30 +47,38 @@ pip install anthropic pinecone-client pgvector langchain --break-system-packages
 
 ## Tabs (in order)
 
-1. **RAGPipeline** — in-memory keyword retrieval, configurable Top-K/chunk/overlap, live Claude Q&A
-2. **AgentOrchestration** — toggleable tool registry, animated ReAct trace (600ms/step reveal)
-3. **PromptStudio** — prompt scoring (clarity/security/efficiency), guardrails toggles, one-click optimize
-4. **ArchitecturePatterns** — SVG diagrams: RAG, Multi-Agent, Secure Enterprise
-5. **Monitoring** — mock token/latency/cost charts via Recharts BarChart + AreaChart
+1. **RAGPipeline** — local TF-cosine vector retrieval with real chunking/overlap, configurable Top-K, streaming Claude Q&A (`src/components/tabs/RAGPipeline.jsx`)
+2. **AgentOrchestration** — toggleable tool registry, animated ReAct trace (600ms/step reveal) with interruptible Stop button
+3. **PromptStudio** — prompt scoring (clarity/security/efficiency), enforced guardrails, one-click optimize, A/B compare
+4. **ArchitecturePatterns** — SVG diagrams: RAG, Multi-Agent, Secure Enterprise (draggable nodes, SVG/PNG export)
+5. **Monitoring** — token/latency/cost charts via Recharts (clearly badged demo data)
 
 ## Conventions
 
 - Don't add new tabs — extend existing ones with sub-views or config options.
-- Don't split into multiple files — keep everything in `ClaudeArchitectStudio.jsx`.
+- One tab per file under `src/components/tabs/`; shared logic lives in `src/lib/`; one component per file.
 - Don't use localStorage — all state lives in React `useState`.
-- Don't import external UI libraries — inline styles only, no new dependencies.
-- All Claude API calls MUST go through the shared `callClaude(system, userMsg, maxTokens)` helper.
-- Structured outputs: request JSON in system prompt, strip backtick fences, then `JSON.parse()`.
-- Don't hardcode API keys — the artifact runtime injects them automatically.
-- Don't modify the dark theme color palette without reading `docs/reference.md` first.
+- Don't import external UI libraries — inline styles + `src/styles.css` only, no new dependencies.
+- All Claude API calls MUST go through the shared `callClaude` / `streamClaude` helpers in `src/lib/claude.js`.
+- Use model IDs from `MODELS` in `src/lib/claude.js`; don't hardcode model strings elsewhere.
+- Structured outputs: request JSON in system prompt, then `parseJSON()` from `src/lib/claude.js`.
+- Don't hardcode API keys — the proxy (`api/messages.js` / `vite.config.js`) injects `ANTHROPIC_API_KEY`.
+- Don't modify the dark theme color palette without reading `reference.md` first; reuse `src/theme.js`.
 
 ## Current Status
 
-**Phase 1 — Complete.** All 5 tabs functional with real Claude API integration. Key limitations:
-- RAG uses keyword-matching retrieval (not real vector similarity)
-- Agent tools are simulated (Claude generates fake tool calls, no real execution)
-- Guardrails are UI toggles only (not enforced)
-- Monitoring data is entirely hardcoded/mock
+**Phase 1 + polish pass — Complete.** All 5 tabs functional with real Claude API integration. Recent polish:
+
+- RAG now uses real local vector similarity (TF cosine over overlapping chunks) — not keyword matching
+- Guardrails enforced client-side: PII redaction + Cost Guard token cap; Hallucination/Toxicity added to system prompt
+- API error handling distinguishes network / 401 / 429 / 5xx
+- Responsive (single-column under 820px) + accessibility (focus rings, aria labels, button types)
+
+Remaining limitations (Phase 2 targets):
+
+- Agent tools are simulated (Claude generates the trace; no real execution) — clearly labeled in the UI
+- RAG retrieval is local, not a real vector DB / embedding API
+- Monitoring data is hardcoded/mock — clearly badged "Demo data"
 - Only RAG tab uses SSE streaming; Agent and PromptStudio await full responses
 
 ## Implementation Plan
